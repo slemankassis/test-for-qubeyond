@@ -1,4 +1,5 @@
 import express, { Request, Response, NextFunction } from "express";
+// @ts-ignore
 import LimitingMiddleware from "limiting-middleware";
 import jokeRoutes from "./routes/jokeRoutes";
 import dotenv from "dotenv";
