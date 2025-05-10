@@ -39,7 +39,7 @@ app.use((err: ApiError, req: Request, res: Response, next: NextFunction) => {
   });
 });
 
-const PORT = process.env.PORT || 3005;
+const PORT = process.env.PORT || 3006;
 
 app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
 

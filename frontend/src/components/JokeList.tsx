@@ -44,10 +44,10 @@ export const JokeList: React.FC<JokeListProps> = ({ darkMode }) => {
 
       if (isSearching && searchTerm) {
         response = await axios.get(
-          `http://localhost:3005/jokes/search?q=${encodeURIComponent(searchTerm)}`,
+          `http://localhost:3006/jokes/search?q=${encodeURIComponent(searchTerm)}`,
         );
       } else {
-        response = await axios.get("http://localhost:3005/jokes/random/50");
+        response = await axios.get("http://localhost:3006/jokes/random/50");
       }
 
       const jokesWithRating = response.data.map((joke: Joke) => ({
@@ -173,7 +173,7 @@ export const JokeList: React.FC<JokeListProps> = ({ darkMode }) => {
 
     // Call the API to rate the joke
     axios
-      .post(`http://localhost:3005/jokes/${id}/rate`, { value: rating })
+      .post(`http://localhost:3006/jokes/${id}/rate`, { value: rating })
       .then((response) => {
         // Update local state with the updated joke
         const updatedJoke = response.data;
