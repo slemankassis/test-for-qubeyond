@@ -4,12 +4,14 @@ import { Joke } from "../types";
 interface JokeCardProps {
   joke: Joke;
   onRate: (id: number | undefined, rating: number) => void;
+  onEdit?: () => void;
   darkMode: boolean;
 }
 
 export const JokeCard: React.FC<JokeCardProps> = ({
   joke,
   onRate,
+  onEdit,
   darkMode,
 }) => {
   const [showPunchline, setShowPunchline] = useState(false);
@@ -46,7 +48,6 @@ export const JokeCard: React.FC<JokeCardProps> = ({
       className={`relative rounded-lg shadow-md overflow-hidden transition-all duration-300
         ${darkMode ? "bg-gray-800 hover:bg-gray-750" : "bg-white hover:bg-gray-50"}`}
     >
-      {/* Type badge */}
       <div
         className={`absolute top-2 right-2 px-2 py-1 text-xs font-semibold rounded-full
         ${
@@ -106,18 +107,33 @@ export const JokeCard: React.FC<JokeCardProps> = ({
             </p>
           </div>
 
-          {showPunchline && (
-            <button
-              onClick={togglePunchline}
-              className={`text-xs ${
-                darkMode
-                  ? "text-gray-400 hover:text-white"
-                  : "text-gray-500 hover:text-gray-800"
-              }`}
-            >
-              Hide
-            </button>
-          )}
+          <div className="flex gap-2">
+            {onEdit && (
+              <button
+                onClick={onEdit}
+                className={`text-xs px-2 py-1 rounded ${
+                  darkMode
+                    ? "bg-blue-600 text-white hover:bg-blue-700"
+                    : "bg-blue-500 text-white hover:bg-blue-600"
+                }`}
+              >
+                Edit
+              </button>
+            )}
+
+            {showPunchline && (
+              <button
+                onClick={togglePunchline}
+                className={`text-xs ${
+                  darkMode
+                    ? "text-gray-400 hover:text-white"
+                    : "text-gray-500 hover:text-gray-800"
+                }`}
+              >
+                Hide
+              </button>
+            )}
+          </div>
         </div>
 
         {showPunchline && !justRated && (

@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { Joke, PaginationInfo, SortOption } from "../types";
 import { JokeCard } from "./JokeCard";
 import { Pagination } from "./Pagination";
 import { SortControls } from "./SortControls";
 import { FilterControls } from "./FilterControls";
+import JokeModal from "./JokeModal";
 
 interface JokeListProps {
   darkMode: boolean;
@@ -17,6 +18,9 @@ export const JokeList: React.FC<JokeListProps> = ({ darkMode }) => {
   const [error, setError] = useState<string | null>(null);
   const [jokeTypes, setJokeTypes] = useState<string[]>([]);
   const [selectedType, setSelectedType] = useState<string>("all");
+  const [showModal, setShowModal] = useState<boolean>(false);
+  const [selectedJoke, setSelectedJoke] = useState<Joke | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
 
   const [pagination, setPagination] = useState<PaginationInfo>({
     currentPage: 1,
@@ -30,38 +34,50 @@ export const JokeList: React.FC<JokeListProps> = ({ darkMode }) => {
     direction: "asc",
   });
 
-  useEffect(() => {
-    const fetchJokes = async () => {
-      try {
-        setLoading(true);
-        const response = await axios.get(
-          "http://localhost:3005/jokes/random/50",
-        );
+  const fetchJokes = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get("http://localhost:3005/jokes/random/50");
 
-        const jokesWithRating = response.data.map((joke: Joke) => ({
-          ...joke,
-          rating: joke.rating || 0,
-          votes: joke.votes || 0,
-        }));
+      const jokesWithRating = response.data.map((joke: Joke) => ({
+        ...joke,
+        rating: joke.rating || 0,
+        votes: joke.votes || 0,
+      }));
 
-        setJokes(jokesWithRating);
+      setJokes(jokesWithRating);
 
-        const types = [
-          ...new Set(jokesWithRating.map((joke: Joke) => joke.type)),
-        ] as string[];
-        setJokeTypes(types);
+      const types = [
+        ...new Set(jokesWithRating.map((joke: Joke) => joke.type)),
+      ] as string[];
+      setJokeTypes(types);
 
-        setError(null);
-      } catch (err) {
-        setError("Failed to fetch jokes. Please try again later.");
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchJokes();
+      setError(null);
+    } catch (err) {
+      setError("Failed to fetch jokes. Please try again later.");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchJokes();
+  }, [fetchJokes, refreshTrigger]);
+
+  const handleOpenModal = (joke: Joke | null = null) => {
+    setSelectedJoke(joke);
+    setShowModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setSelectedJoke(null);
+  };
+
+  const handleRefresh = () => {
+    setRefreshTrigger((prev) => prev + 1);
+  };
 
   useEffect(() => {
     let result = [...jokes];
@@ -147,12 +163,26 @@ export const JokeList: React.FC<JokeListProps> = ({ darkMode }) => {
   return (
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-        <FilterControls
-          jokeTypes={jokeTypes}
-          selectedType={selectedType}
-          onFilterChange={handleFilterChange}
-          darkMode={darkMode}
-        />
+        <div className="flex items-center gap-4">
+          <FilterControls
+            jokeTypes={jokeTypes}
+            selectedType={selectedType}
+            onFilterChange={handleFilterChange}
+            darkMode={darkMode}
+          />
+
+          <button
+            onClick={() => handleOpenModal()}
+            className={`px-4 py-2 rounded-md ${
+              darkMode
+                ? "bg-blue-600 text-white hover:bg-blue-700"
+                : "bg-blue-500 text-white hover:bg-blue-600"
+            }`}
+          >
+            Add Joke
+          </button>
+        </div>
+
         <SortControls
           sortOption={sortOption}
           onSortChange={handleSortChange}
@@ -192,6 +222,7 @@ export const JokeList: React.FC<JokeListProps> = ({ darkMode }) => {
                 key={joke.id}
                 joke={joke}
                 onRate={handleRateJoke}
+                onEdit={() => handleOpenModal(joke)}
                 darkMode={darkMode}
               />
             ))}
@@ -203,6 +234,15 @@ export const JokeList: React.FC<JokeListProps> = ({ darkMode }) => {
             darkMode={darkMode}
           />
         </>
+      )}
+
+      {showModal && (
+        <JokeModal
+          joke={selectedJoke}
+          onClose={handleCloseModal}
+          onRefresh={handleRefresh}
+          darkMode={darkMode}
+        />
       )}
     </div>
   );

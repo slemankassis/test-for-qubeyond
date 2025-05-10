@@ -6,39 +6,36 @@ import {
   randomSelect,
   jokeByType,
   jokeById,
+  addJoke,
+  updateJoke,
   count,
+  Joke,
 } from "../db";
 
 const router = Router();
 
-// Root endpoint - instructions
 router.get("/", (req: Request, res: Response) => {
   res.send(
-    "Try /random_joke, /random_ten, /jokes/random, or /jokes/ten , /jokes/random/<any-number>"
+    "Try /random_joke, /random_ten, /jokes/random, or /jokes/ten , /jokes/random/<any-number>",
   );
 });
 
-// Health check endpoint
 router.get("/ping", (req: Request, res: Response) => {
   res.send("pong");
 });
 
-// Get a random joke
 router.get("/random_joke", (req: Request, res: Response) => {
   res.json(randomJoke());
 });
 
-// Get 10 random jokes
 router.get("/random_ten", (req: Request, res: Response) => {
   res.json(randomTen());
 });
 
-// Alternate endpoint for random joke
 router.get("/jokes/random", (req: Request, res: Response) => {
   res.json(randomJoke());
 });
 
-// Get N random jokes
 router.get(
   "/jokes/random/:num",
   (req: Request, res: Response, next: NextFunction) => {
@@ -57,29 +54,25 @@ router.get(
     } catch (e) {
       return next(e);
     }
-  }
+  },
 );
 
-// Alternate endpoint for 10 random jokes
 router.get("/jokes/ten", (req: Request, res: Response) => {
   res.json(randomTen());
 });
 
-// Get a random joke of a specific type
 router.get("/jokes/:type/random", (req: Request, res: Response) => {
   res.json(jokeByType(req.params.type, 1));
 });
 
-// Get 10 jokes of a specific type
 router.get("/jokes/:type/ten", (req: Request, res: Response) => {
   res.json(jokeByType(req.params.type, 10));
 });
 
-// Get a joke by ID
 router.get("/jokes/:id", (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const joke = jokeById(+id);
+    const joke = jokeById(id);
     if (!joke) return next({ statusCode: 404, message: "joke not found" });
     return res.json(joke);
   } catch (e) {
@@ -87,7 +80,51 @@ router.get("/jokes/:id", (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-// Get all available joke types
+router.post("/jokes", (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { type, setup, punchline } = req.body;
+
+    if (!type || !setup || !punchline) {
+      return next({
+        statusCode: 400,
+        message: "Missing required fields: type, setup, punchline",
+      });
+    }
+
+    const newJoke: Joke = { type, setup, punchline };
+    const addedJoke = addJoke(newJoke);
+
+    return res.status(201).json(addedJoke);
+  } catch (e) {
+    return next(e);
+  }
+});
+
+router.put("/jokes/:id", (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const { type, setup, punchline } = req.body;
+
+    if (!type || !setup || !punchline) {
+      return next({
+        statusCode: 400,
+        message: "Missing required fields: type, setup, punchline",
+      });
+    }
+
+    const jokeUpdate: Joke = { type, setup, punchline };
+    const updatedJoke = updateJoke(id, jokeUpdate);
+
+    if (!updatedJoke) {
+      return next({ statusCode: 404, message: "joke not found" });
+    }
+
+    return res.json(updatedJoke);
+  } catch (e) {
+    return next(e);
+  }
+});
+
 router.get("/types", (req: Request, res: Response) => {
   res.json(types);
 });

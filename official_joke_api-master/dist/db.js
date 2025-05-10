@@ -33,28 +33,23 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.jokes = exports.jokeById = exports.count = exports.jokeByType = exports.randomSelect = exports.randomTen = exports.randomN = exports.randomJoke = exports.types = void 0;
+exports.jokes = exports.updateJoke = exports.addJoke = exports.jokeById = exports.count = exports.jokeByType = exports.randomSelect = exports.randomTen = exports.randomN = exports.randomJoke = exports.types = void 0;
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
-// Load jokes from JSON file
+const uuid_1 = require("uuid");
 const jokesPath = path.join(__dirname, "../jokes/index.json");
 const jokes = JSON.parse(fs.readFileSync(jokesPath, "utf8"));
 exports.jokes = jokes;
-// Add IDs to jokes
-let lastJokeId = 0;
 jokes.forEach((joke) => {
-    joke.id = ++lastJokeId;
+    if (!joke.id) {
+        joke.id = (0, uuid_1.v4)();
+    }
 });
-// Get all available joke types
 exports.types = Array.from(new Set(jokes.map((joke) => joke.type)));
-// Get a random joke
 const randomJoke = () => {
     return jokes[Math.floor(Math.random() * jokes.length)];
 };
 exports.randomJoke = randomJoke;
-/**
- * Get N random jokes from a jokeArray
- */
 const randomN = (jokeArray, n) => {
     const limit = Math.min(jokeArray.length, n);
     const randomIndicesSet = new Set();
@@ -69,25 +64,46 @@ const randomN = (jokeArray, n) => {
     });
 };
 exports.randomN = randomN;
-// Get 10 random jokes
 const randomTen = () => (0, exports.randomN)(jokes, 10);
 exports.randomTen = randomTen;
-// Get N random jokes
 const randomSelect = (number) => (0, exports.randomN)(jokes, number);
 exports.randomSelect = randomSelect;
-// Get N jokes of a specific type
 const jokeByType = (type, n) => {
     return (0, exports.randomN)(jokes.filter((joke) => joke.type === type), n);
 };
 exports.jokeByType = jokeByType;
-// Get total joke count
 exports.count = jokes.length;
-/**
- * Get a joke by its ID
- * @param {number} id - joke id
- * @returns a single joke object or undefined
- */
 const jokeById = (id) => {
     return jokes.find((joke) => joke.id === id);
 };
 exports.jokeById = jokeById;
+const addJoke = (joke) => {
+    const newJoke = {
+        ...joke,
+        id: (0, uuid_1.v4)(),
+        rating: 0,
+        votes: 0,
+    };
+    jokes.push(newJoke);
+    saveJokesToFile();
+    return newJoke;
+};
+exports.addJoke = addJoke;
+const updateJoke = (id, updatedJoke) => {
+    const index = jokes.findIndex((joke) => joke.id === id);
+    if (index === -1) {
+        return undefined;
+    }
+    jokes[index] = {
+        ...updatedJoke,
+        id: jokes[index].id,
+        rating: jokes[index].rating,
+        votes: jokes[index].votes,
+    };
+    saveJokesToFile();
+    return jokes[index];
+};
+exports.updateJoke = updateJoke;
+const saveJokesToFile = () => {
+    fs.writeFileSync(jokesPath, JSON.stringify(jokes, null, 2), "utf8");
+};

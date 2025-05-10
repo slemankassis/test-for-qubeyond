@@ -1,19 +1,23 @@
 import * as fs from "fs";
 import * as path from "path";
+import { v4 as uuidv4 } from "uuid";
 
 export interface Joke {
-  id?: number;
+  id?: string;
   type: string;
   setup: string;
   punchline: string;
+  rating?: number;
+  votes?: number;
 }
 
 const jokesPath = path.join(__dirname, "../jokes/index.json");
 const jokes: Joke[] = JSON.parse(fs.readFileSync(jokesPath, "utf8"));
 
-let lastJokeId = 0;
 jokes.forEach((joke) => {
-  joke.id = ++lastJokeId;
+  if (!joke.id) {
+    joke.id = uuidv4();
+  }
 });
 
 export const types: string[] = Array.from(
@@ -24,9 +28,6 @@ export const randomJoke = (): Joke => {
   return jokes[Math.floor(Math.random() * jokes.length)];
 };
 
-/**
- * Get N random jokes from a jokeArray
- */
 export const randomN = (jokeArray: Joke[], n: number): Joke[] => {
   const limit = Math.min(jokeArray.length, n);
   const randomIndicesSet = new Set<number>();
@@ -43,13 +44,10 @@ export const randomN = (jokeArray: Joke[], n: number): Joke[] => {
   });
 };
 
-// Get 10 random jokes
 export const randomTen = (): Joke[] => randomN(jokes, 10);
 
-// Get N random jokes
 export const randomSelect = (number: number): Joke[] => randomN(jokes, number);
 
-// Get N jokes of a specific type
 export const jokeByType = (type: string, n: number): Joke[] => {
   return randomN(
     jokes.filter((joke) => joke.type === type),
@@ -57,17 +55,48 @@ export const jokeByType = (type: string, n: number): Joke[] => {
   );
 };
 
-// Get total joke count
 export const count: number = jokes.length;
 
-/**
- * Get a joke by its ID
- * @param {number} id - joke id
- * @returns a single joke object or undefined
- */
-export const jokeById = (id: number): Joke | undefined => {
+export const jokeById = (id: string): Joke | undefined => {
   return jokes.find((joke) => joke.id === id);
 };
 
-// Export the jokes array for testing
+export const addJoke = (joke: Joke): Joke => {
+  const newJoke: Joke = {
+    ...joke,
+    id: uuidv4(),
+    rating: 0,
+    votes: 0,
+  };
+
+  jokes.push(newJoke);
+
+  saveJokesToFile();
+
+  return newJoke;
+};
+
+export const updateJoke = (id: string, updatedJoke: Joke): Joke | undefined => {
+  const index = jokes.findIndex((joke) => joke.id === id);
+
+  if (index === -1) {
+    return undefined;
+  }
+
+  jokes[index] = {
+    ...updatedJoke,
+    id: jokes[index].id,
+    rating: jokes[index].rating,
+    votes: jokes[index].votes,
+  };
+
+  saveJokesToFile();
+
+  return jokes[index];
+};
+
+const saveJokesToFile = (): void => {
+  fs.writeFileSync(jokesPath, JSON.stringify(jokes, null, 2), "utf8");
+};
+
 export { jokes };

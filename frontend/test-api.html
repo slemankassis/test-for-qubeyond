@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Joke API Tester</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+    }
+
+    h1 {
+      color: #333;
+      text-align: center;
+    }
+
+    hr {
+      border: 0;
+      height: 1px;
+      background-color: #ddd;
+      margin: 20px 0;
+    }
+
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 5px;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    #randomJoke,
+    #addJokeForm {
+      background-color: #f9f9f9;
+      border-radius: 8px;
+      padding: 15px;
+      margin: 15px 0;
+    }
+
+    .joke-setup {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .joke-punchline {
+      font-size: 16px;
+      font-style: italic;
+      color: #666;
+    }
+
+    .joke-info {
+      color: #999;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      padding: 8px;
+      margin: 5px 0 15px;
+      display: block;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
+
+    label {
+      font-weight: bold;
+    }
+
+    .form-actions {
+      text-align: right;
+    }
+
+    #jokesList {
+      margin-top: 20px;
+    }
+
+    .joke-card {
+      background-color: #f9f9f9;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 15px;
+      position: relative;
+    }
+
+    .joke-card:hover {
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .joke-actions {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+    }
+
+    .joke-actions button {
+      background-color: #2196F3;
+      padding: 5px 10px;
+      font-size: 14px;
+    }
+
+    .joke-type {
+      display: inline-block;
+      background-color: #ff9800;
+      color: white;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      margin-bottom: 5px;
+    }
+
+    .error {
+      color: #d32f2f;
+      background-color: #ffebee;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+
+    .success {
+      color: #388e3c;
+      background-color: #e8f5e9;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Joke API Tester</h1>
+
+    <div id="messages"></div>
+
+    <div id="randomJoke">
+      <h2>Random Joke</h2>
+      <div id="jokeDisplay">
+        <p><em>Click the button below to fetch a random joke</em></p>
+      </div>
+      <button id="getJokeBtn">Get Random Joke</button>
+      <button id="getTenJokesBtn">Get 10 Random Jokes</button>
+    </div>
+
+    <hr>
+
+    <div id="addJokeForm">
+      <h2>Add New Joke</h2>
+      <form id="jokeForm">
+        <div>
+          <label for="jokeType">Type:</label>
+          <select id="jokeType" required>
+            <option value="general">General</option>
+            <option value="programming">Programming</option>
+            <option value="knock-knock">Knock-knock</option>
+            <option value="dad">Dad Joke</option>
+          </select>
+        </div>
+        <div>
+          <label for="jokeSetup">Setup:</label>
+          <input type="text" id="jokeSetup" placeholder="Enter joke setup..." required>
+        </div>
+        <div>
+          <label for="jokePunchline">Punchline:</label>
+          <textarea id="jokePunchline" placeholder="Enter joke punchline..." required></textarea>
+        </div>
+        <input type="hidden" id="jokeId">
+        <div class="form-actions">
+          <button type="button" id="resetFormBtn">Reset</button>
+          <button type="submit" id="submitJokeBtn">Add Joke</button>
+        </div>
+      </form>
+    </div>
+
+    <hr>
+
+    <h2>Recent Jokes</h2>
+    <div id="jokesList"></div>
+  </div>
+
+  <script>
+    const API_URL = 'http://localhost:3005';
+
+    const getJokeBtn = document.getElementById('getJokeBtn');
+    const getTenJokesBtn = document.getElementById('getTenJokesBtn');
+    const jokeDisplay = document.getElementById('jokeDisplay');
+    const jokesList = document.getElementById('jokesList');
+    const jokeForm = document.getElementById('jokeForm');
+    const jokeType = document.getElementById('jokeType');
+    const jokeSetup = document.getElementById('jokeSetup');
+    const jokePunchline = document.getElementById('jokePunchline');
+    const jokeId = document.getElementById('jokeId');
+    const submitJokeBtn = document.getElementById('submitJokeBtn');
+    const resetFormBtn = document.getElementById('resetFormBtn');
+    const messagesDiv = document.getElementById('messages');
+
+    function showMessage(message, type = 'error') {
+      const messageDiv = document.createElement('div');
+      messageDiv.className = type;
+      messageDiv.textContent = message;
+      messagesDiv.appendChild(messageDiv);
+
+      setTimeout(() => {
+        messageDiv.remove();
+      }, 5000);
+    }
+
+    getJokeBtn.addEventListener('click', async () => {
+      try {
+        jokeDisplay.innerHTML = '<p><em>Loading...</em></p>';
+        const response = await fetch(`${API_URL}/random_joke`);
+
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`);
+        }
+
+        const joke = await response.json();
+        displayJoke(joke, jokeDisplay);
+      } catch (error) {
+        console.error('Error fetching random joke:', error);
+        jokeDisplay.innerHTML = `<p class="error">Failed to fetch joke: ${error.message}</p>`;
+      }
+    });
+
+    getTenJokesBtn.addEventListener('click', async () => {
+      try {
+        jokesList.innerHTML = '<p><em>Loading...</em></p>';
+        const response = await fetch(`${API_URL}/random_ten`);
+
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`);
+        }
+
+        const jokes = await response.json();
+
+        jokesList.innerHTML = '';
+        jokes.forEach(joke => {
+          const jokeCard = document.createElement('div');
+          jokeCard.className = 'joke-card';
+          displayJoke(joke, jokeCard, true);
+          jokesList.appendChild(jokeCard);
+        });
+      } catch (error) {
+        console.error('Error fetching jokes:', error);
+        jokesList.innerHTML = `<p class="error">Failed to fetch jokes: ${error.message}</p>`;
+      }
+    });
+
+    function displayJoke(joke, container, withActions = false) {
+      container.innerHTML = `
+        <div class="joke-type">${joke.type}</div>
+        <div class="joke-setup">${joke.setup}</div>
+        <div class="joke-punchline">${joke.punchline}</div>
+        <div class="joke-info">
+          ID: ${joke.id} | Rating: ${joke.rating || 0} (${joke.votes || 0} votes)
+        </div>
+      `;
+
+      if (withActions) {
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'joke-actions';
+
+        const editBtn = document.createElement('button');
+        editBtn.textContent = 'Edit';
+        editBtn.addEventListener('click', () => setupEditForm(joke));
+
+        actionsDiv.appendChild(editBtn);
+        container.appendChild(actionsDiv);
+      }
+    }
+
+    function setupEditForm(joke) {
+      jokeType.value = joke.type;
+      jokeSetup.value = joke.setup;
+      jokePunchline.value = joke.punchline;
+      jokeId.value = joke.id;
+
+      submitJokeBtn.textContent = 'Update Joke';
+      document.querySelector('#addJokeForm h2').textContent = 'Edit Joke';
+
+      document.getElementById('addJokeForm').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    resetFormBtn.addEventListener('click', () => {
+      jokeForm.reset();
+      jokeId.value = '';
+      submitJokeBtn.textContent = 'Add Joke';
+      document.querySelector('#addJokeForm h2').textContent = 'Add New Joke';
+    });
+
+    jokeForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const jokeData = {
+        type: jokeType.value,
+        setup: jokeSetup.value,
+        punchline: jokePunchline.value
+      };
+
+      const isEditing = jokeId.value !== '';
+
+      try {
+        let response;
+
+        if (isEditing) {
+          response = await fetch(`${API_URL}/jokes/${jokeId.value}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(jokeData)
+          });
+        } else {
+          response = await fetch(`${API_URL}/jokes`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(jokeData)
+          });
+        }
+
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`);
+        }
+
+        const savedJoke = await response.json();
+
+        showMessage(`Joke ${isEditing ? 'updated' : 'added'} successfully!`, 'success');
+
+        jokeForm.reset();
+        jokeId.value = '';
+        submitJokeBtn.textContent = 'Add Joke';
+        document.querySelector('#addJokeForm h2').textContent = 'Add New Joke';
+
+        getTenJokesBtn.click();
+
+      } catch (error) {
+        console.error(`Error ${isEditing ? 'updating' : 'adding'} joke:`, error);
+        showMessage(`Failed to ${isEditing ? 'update' : 'add'} joke: ${error.message}`);
+      }
+    });
+
+    getTenJokesBtn.click();
+  </script>
+</body>
+
+</html>
