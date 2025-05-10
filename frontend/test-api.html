@@ -208,7 +208,7 @@
   </div>
 
   <script>
-    const API_URL = 'http://localhost:3005';
+    const API_URL = 'http://localhost:3007';
 
     const getJokeBtn = document.getElementById('getJokeBtn');
     const getTenJokesBtn = document.getElementById('getTenJokesBtn');
@@ -254,7 +254,7 @@
     getTenJokesBtn.addEventListener('click', async () => {
       try {
         jokesList.innerHTML = '<p><em>Loading...</em></p>';
-        const response = await fetch(`${API_URL}/random_ten`);
+        const response = await fetch(`${API_URL}/jokes/ten`);
 
         if (!response.ok) {
           throw new Error(`Error: ${response.status}`);
@@ -282,6 +282,12 @@
         <div class="joke-punchline">${joke.punchline}</div>
         <div class="joke-info">
           ID: ${joke.id} | Rating: ${joke.rating || 0} (${joke.votes || 0} votes)
+        </div>
+        <div class="joke-rate" style="margin-top: 8px;">
+          <span>Rate: </span>
+          ${[1, 2, 3, 4, 5].map(star =>
+        `<button class="rate-btn" data-id="${joke.id}" data-rating="${star}" style="padding: 2px 6px; margin: 0 2px;">${star}★</button>`
+      ).join('')}
         </div>
       `;
 
@@ -362,6 +368,7 @@
         submitJokeBtn.textContent = 'Add Joke';
         document.querySelector('#addJokeForm h2').textContent = 'Add New Joke';
 
+        // Refresh jokes list after adding/updating
         getTenJokesBtn.click();
 
       } catch (error) {
@@ -370,6 +377,63 @@
       }
     });
 
+    // Add event delegation for rating buttons
+    document.addEventListener('click', async (e) => {
+      const target = e.target;
+      if (target.classList.contains('rate-btn')) {
+        const id = target.dataset.id;
+        const rating = parseInt(target.dataset.rating);
+
+        try {
+          const response = await fetch(`${API_URL}/jokes/${id}/rate`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ value: rating })
+          });
+
+          if (!response.ok) {
+            throw new Error(`Error: ${response.status}`);
+          }
+
+          const updatedJoke = await response.json();
+          showMessage(`Joke rated ${rating} stars!`, 'success');
+
+          // Refresh the jokes list
+          getTenJokesBtn.click();
+        } catch (error) {
+          console.error('Error rating joke:', error);
+          showMessage(`Failed to rate joke: ${error.message}`);
+        }
+      }
+    });
+
+    // Load joke types for the dropdown
+    async function loadJokeTypes() {
+      try {
+        const response = await fetch(`${API_URL}/types`);
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`);
+        }
+
+        const types = await response.json();
+        const typeSelect = document.getElementById('jokeType');
+        typeSelect.innerHTML = '';
+
+        types.forEach(type => {
+          const option = document.createElement('option');
+          option.value = type;
+          option.textContent = type.charAt(0).toUpperCase() + type.slice(1);
+          typeSelect.appendChild(option);
+        });
+      } catch (error) {
+        console.error('Error loading joke types:', error);
+      }
+    }
+
+    // Load types and then get jokes
+    loadJokeTypes();
     getTenJokesBtn.click();
   </script>
 </body>

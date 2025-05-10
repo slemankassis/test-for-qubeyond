@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Joke } from "../types";
 
 interface JokeCardProps {
@@ -30,33 +30,42 @@ export const JokeCard: React.FC<JokeCardProps> = ({
     }, 2000);
   };
 
-  const formatRating = (rating: number | undefined) => {
-    if (rating === undefined) return "No ratings";
+  // Use useMemo to optimize the rating formatting
+  const formattedRating = useMemo(() => {
+    if (joke.rating === undefined) return "No ratings";
 
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating - fullStars >= 0.5;
+    const fullStars = Math.floor(joke.rating);
+    const hasHalfStar = joke.rating - fullStars >= 0.5;
 
     let stars = "★".repeat(fullStars);
     if (hasHalfStar) stars += "½";
-    stars += "☆".repeat(5 - Math.ceil(rating));
+    stars += "☆".repeat(5 - Math.ceil(joke.rating));
 
     return stars;
-  };
+  }, [joke.rating]);
+
+  // TypeColor is now memoized for performance
+  const typeColor = useMemo(() => {
+    switch (joke.type) {
+      case "programming":
+        return "bg-blue-500 text-white";
+      case "knock-knock":
+        return "bg-purple-500 text-white";
+      default:
+        return "bg-green-500 text-white";
+    }
+  }, [joke.type]);
 
   return (
-    <div
+    <article
       className={`relative rounded-lg shadow-md overflow-hidden transition-all duration-300
         ${darkMode ? "bg-gray-800 hover:bg-gray-750" : "bg-white hover:bg-gray-50"}`}
+      tabIndex={0} // Make component focusable for keyboard users
     >
       <div
-        className={`absolute top-2 right-2 px-2 py-1 text-xs font-semibold rounded-full
-        ${
-          joke.type === "programming"
-            ? "bg-blue-500 text-white"
-            : joke.type === "knock-knock"
-              ? "bg-purple-500 text-white"
-              : "bg-green-500 text-white"
-        }`}
+        role="note"
+        aria-label={`Joke type: ${joke.type}`}
+        className={`absolute top-2 right-2 px-2 py-1 text-xs font-semibold rounded-full ${typeColor}`}
       >
         {joke.type}
       </div>
@@ -64,6 +73,7 @@ export const JokeCard: React.FC<JokeCardProps> = ({
       <div className="p-6 pt-8">
         <h3
           className={`text-xl font-semibold mb-4 ${darkMode ? "text-white" : "text-gray-800"}`}
+          id={`joke-setup-${joke.id}`}
         >
           {joke.setup}
         </h3>
@@ -71,6 +81,8 @@ export const JokeCard: React.FC<JokeCardProps> = ({
         {showPunchline ? (
           <p
             className={`text-lg italic mb-6 ${darkMode ? "text-gray-300" : "text-gray-600"}`}
+            id={`joke-punchline-${joke.id}`}
+            aria-live="polite"
           >
             {joke.punchline}
           </p>
@@ -82,6 +94,8 @@ export const JokeCard: React.FC<JokeCardProps> = ({
                 ? "bg-gray-700 text-white hover:bg-gray-600"
                 : "bg-gray-200 text-gray-800 hover:bg-gray-300"
             }`}
+            aria-controls={`joke-punchline-${joke.id}`}
+            aria-expanded={showPunchline}
           >
             Reveal Punchline
           </button>
@@ -91,18 +105,20 @@ export const JokeCard: React.FC<JokeCardProps> = ({
           <div>
             <p
               className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}
+              aria-live="polite"
             >
-              Rating:
+              <span className="sr-only">Rating: </span>
               <span
-                className={`ml-1 ${
+                className={`${
                   (joke.rating || 0) > 3
                     ? "text-yellow-500"
                     : darkMode
                       ? "text-gray-300"
                       : "text-gray-600"
                 }`}
+                aria-label={`Rated ${joke.rating || 0} out of 5 stars with ${joke.votes || 0} votes`}
               >
-                {formatRating(joke.rating)} ({joke.votes || 0})
+                {formattedRating} ({joke.votes || 0})
               </span>
             </p>
           </div>
@@ -116,6 +132,7 @@ export const JokeCard: React.FC<JokeCardProps> = ({
                     ? "bg-blue-600 text-white hover:bg-blue-700"
                     : "bg-blue-500 text-white hover:bg-blue-600"
                 }`}
+                aria-label="Edit joke"
               >
                 Edit
               </button>
@@ -129,6 +146,8 @@ export const JokeCard: React.FC<JokeCardProps> = ({
                     ? "text-gray-400 hover:text-white"
                     : "text-gray-500 hover:text-gray-800"
                 }`}
+                aria-controls={`joke-punchline-${joke.id}`}
+                aria-expanded={showPunchline}
               >
                 Hide
               </button>
@@ -137,7 +156,11 @@ export const JokeCard: React.FC<JokeCardProps> = ({
         </div>
 
         {showPunchline && !justRated && (
-          <div className="mt-4 flex justify-center gap-2">
+          <div
+            className="mt-4 flex justify-center gap-2"
+            role="group"
+            aria-label="Rate this joke"
+          >
             {[1, 2, 3, 4, 5].map((rating) => (
               <button
                 key={rating}
@@ -147,7 +170,7 @@ export const JokeCard: React.FC<JokeCardProps> = ({
                     darkMode
                       ? "bg-gray-700 text-yellow-400 hover:bg-gray-600"
                       : "bg-gray-200 text-yellow-500 hover:bg-gray-300"
-                  }`}
+                  } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
                 aria-label={`Rate ${rating} star${rating !== 1 ? "s" : ""}`}
               >
                 {rating}
@@ -160,12 +183,13 @@ export const JokeCard: React.FC<JokeCardProps> = ({
           <div className="mt-4 text-center">
             <p
               className={`text-sm ${darkMode ? "text-green-400" : "text-green-600"}`}
+              aria-live="polite"
             >
               Thanks for rating this joke!
             </p>
           </div>
         )}
       </div>
-    </div>
+    </article>
   );
 };

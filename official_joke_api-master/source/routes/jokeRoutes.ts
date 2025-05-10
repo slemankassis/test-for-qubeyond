@@ -16,8 +16,58 @@ import {
   getCount,
   getTypes,
 } from "../db/jokes";
+import { cache } from "../cache";
 
 const router = Router();
+
+// Caching middleware
+const cacheMiddleware = (ttl = 300000) => {
+  // 5 minutes by default
+  return (req: Request, res: Response, next: NextFunction) => {
+    const cacheKey = `${req.originalUrl || req.url}`;
+
+    // Check if we have a cached response for this URL
+    const cachedData = cache.get(cacheKey);
+    if (cachedData) {
+      console.log(`Cache hit for: ${cacheKey}`);
+      return res.json(cachedData);
+    }
+
+    // Store the original res.json method
+    const originalJson = res.json;
+
+    // Override the res.json method to cache the response
+    res.json = function (data) {
+      // Store in cache before sending
+      cache.set(cacheKey, data, ttl);
+
+      // Call the original method
+      return originalJson.call(this, data);
+    };
+
+    next();
+  };
+};
+
+// Middleware to clear cache when data is modified
+const invalidateCache = (pattern: string) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    // After response is sent, invalidate relevant cache entries
+    res.on("finish", () => {
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        const stats = cache.stats();
+        stats.keys.forEach((key) => {
+          if (key.includes(pattern)) {
+            cache.del(key);
+          }
+        });
+        console.log(`Cache invalidated for pattern: ${pattern}`);
+      }
+    });
+
+    next();
+  };
+};
 
 router.get("/", (req: Request, res: Response) => {
   res.send(
@@ -31,6 +81,7 @@ router.get("/ping", (req: Request, res: Response) => {
 
 router.get(
   "/random_joke",
+  cacheMiddleware(60000), // Cache for 1 minute
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const joke = await randomJoke();
@@ -43,6 +94,7 @@ router.get(
 
 router.get(
   "/random_ten",
+  cacheMiddleware(60000), // Cache for 1 minute
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const jokes = await randomTen();
@@ -75,6 +127,7 @@ router.get(
 
 router.get(
   "/jokes/random",
+  cacheMiddleware(60000), // Cache for 1 minute
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const joke = await randomJoke();
@@ -87,6 +140,7 @@ router.get(
 
 router.get(
   "/jokes/random/:num",
+  cacheMiddleware(60000), // Cache for 1 minute
   async (req: Request, res: Response, next: NextFunction) => {
     let num: number;
     try {
@@ -112,6 +166,7 @@ router.get(
 
 router.get(
   "/jokes/ten",
+  cacheMiddleware(60000), // Cache for 1 minute
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const jokes = await randomTen();
@@ -124,6 +179,7 @@ router.get(
 
 router.get(
   "/jokes/:type/random",
+  cacheMiddleware(60000), // Cache for 1 minute
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const jokes = await jokeByType(req.params.type, 1);
@@ -136,6 +192,7 @@ router.get(
 
 router.get(
   "/jokes/:type/ten",
+  cacheMiddleware(60000), // Cache for 1 minute
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const jokes = await jokeByType(req.params.type, 10);
@@ -148,6 +205,7 @@ router.get(
 
 router.post(
   "/jokes/:id/rate",
+  invalidateCache("/jokes"),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
@@ -180,6 +238,7 @@ router.post(
 
 router.get(
   "/jokes/:id",
+  cacheMiddleware(300000), // Cache for 5 minutes
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
@@ -194,6 +253,7 @@ router.get(
 
 router.post(
   "/jokes",
+  invalidateCache("/jokes"),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { type, setup, punchline } = req.body;
@@ -217,6 +277,7 @@ router.post(
 
 router.put(
   "/jokes/:id",
+  invalidateCache("/jokes"),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
@@ -245,6 +306,7 @@ router.put(
 
 router.get(
   "/types",
+  cacheMiddleware(600000), // Cache for 10 minutes
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const jokeTypes = await getTypes();
