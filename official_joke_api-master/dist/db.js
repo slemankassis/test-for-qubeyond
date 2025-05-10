@@ -33,17 +33,23 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.jokes = exports.updateJoke = exports.addJoke = exports.jokeById = exports.count = exports.jokeByType = exports.randomSelect = exports.randomTen = exports.randomN = exports.randomJoke = exports.types = void 0;
+exports.jokes = exports.rateJoke = exports.updateJoke = exports.addJoke = exports.jokeById = exports.count = exports.searchJokes = exports.jokeByType = exports.randomSelect = exports.randomTen = exports.randomN = exports.randomJoke = exports.types = void 0;
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const uuid_1 = require("uuid");
 const jokesPath = path.join(__dirname, "../jokes/index.json");
 const jokes = JSON.parse(fs.readFileSync(jokesPath, "utf8"));
 exports.jokes = jokes;
+// Ensure all jokes have UUIDs
 jokes.forEach((joke) => {
     if (!joke.id) {
         joke.id = (0, uuid_1.v4)();
     }
+    // Initialize rating and votes if not present
+    if (joke.rating === undefined)
+        joke.rating = 0;
+    if (joke.votes === undefined)
+        joke.votes = 0;
 });
 exports.types = Array.from(new Set(jokes.map((joke) => joke.type)));
 const randomJoke = () => {
@@ -72,6 +78,13 @@ const jokeByType = (type, n) => {
     return (0, exports.randomN)(jokes.filter((joke) => joke.type === type), n);
 };
 exports.jokeByType = jokeByType;
+const searchJokes = (query) => {
+    const searchTermLower = query.toLowerCase();
+    return jokes.filter((joke) => joke.setup.toLowerCase().includes(searchTermLower) ||
+        joke.punchline.toLowerCase().includes(searchTermLower) ||
+        joke.type.toLowerCase().includes(searchTermLower));
+};
+exports.searchJokes = searchJokes;
 exports.count = jokes.length;
 const jokeById = (id) => {
     return jokes.find((joke) => joke.id === id);
@@ -104,6 +117,27 @@ const updateJoke = (id, updatedJoke) => {
     return jokes[index];
 };
 exports.updateJoke = updateJoke;
+const rateJoke = (id, rating) => {
+    const index = jokes.findIndex((joke) => joke.id === id);
+    if (index === -1) {
+        return undefined;
+    }
+    const joke = jokes[index];
+    const currentRating = joke.rating || 0;
+    const currentVotes = joke.votes || 0;
+    // Calculate new weighted average rating
+    const totalPoints = currentRating * currentVotes + rating;
+    const newVotes = currentVotes + 1;
+    const newRating = totalPoints / newVotes;
+    jokes[index] = {
+        ...joke,
+        rating: newRating,
+        votes: newVotes,
+    };
+    saveJokesToFile();
+    return jokes[index];
+};
+exports.rateJoke = rateJoke;
 const saveJokesToFile = () => {
     fs.writeFileSync(jokesPath, JSON.stringify(jokes, null, 2), "utf8");
 };

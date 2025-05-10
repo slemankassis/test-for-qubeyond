@@ -10,13 +10,16 @@ import {
   updateJoke,
   count,
   Joke,
+  searchJokes,
+  rateJoke,
+  RatingData,
 } from "../db";
 
 const router = Router();
 
 router.get("/", (req: Request, res: Response) => {
   res.send(
-    "Try /random_joke, /random_ten, /jokes/random, or /jokes/ten , /jokes/random/<any-number>",
+    "Try /random_joke, /random_ten, /jokes/random, /jokes/search?q=term, or /jokes/ten, /jokes/random/<any-number>",
   );
 });
 
@@ -31,6 +34,26 @@ router.get("/random_joke", (req: Request, res: Response) => {
 router.get("/random_ten", (req: Request, res: Response) => {
   res.json(randomTen());
 });
+
+router.get(
+  "/jokes/search",
+  (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const query = req.query.q as string;
+      if (!query) {
+        return next({
+          statusCode: 400,
+          message: "Missing search query. Use ?q=searchterm",
+        });
+      }
+
+      const results = searchJokes(query);
+      return res.json(results);
+    } catch (e) {
+      return next(e);
+    }
+  },
+);
 
 router.get("/jokes/random", (req: Request, res: Response) => {
   res.json(randomJoke());
@@ -68,6 +91,38 @@ router.get("/jokes/:type/random", (req: Request, res: Response) => {
 router.get("/jokes/:type/ten", (req: Request, res: Response) => {
   res.json(jokeByType(req.params.type, 10));
 });
+
+router.post(
+  "/jokes/:id/rate",
+  (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      const { value } = req.body as RatingData;
+
+      if (
+        value === undefined ||
+        typeof value !== "number" ||
+        value < 0 ||
+        value > 5
+      ) {
+        return next({
+          statusCode: 400,
+          message: "Invalid rating value. Must be a number between 0 and 5.",
+        });
+      }
+
+      const joke = rateJoke(id, value);
+
+      if (!joke) {
+        return next({ statusCode: 404, message: "joke not found" });
+      }
+
+      return res.json(joke);
+    } catch (e) {
+      return next(e);
+    }
+  },
+);
 
 router.get("/jokes/:id", (req: Request, res: Response, next: NextFunction) => {
   try {

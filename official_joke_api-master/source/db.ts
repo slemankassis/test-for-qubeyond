@@ -11,13 +11,21 @@ export interface Joke {
   votes?: number;
 }
 
+export interface RatingData {
+  value: number;
+}
+
 const jokesPath = path.join(__dirname, "../jokes/index.json");
 const jokes: Joke[] = JSON.parse(fs.readFileSync(jokesPath, "utf8"));
 
+// Ensure all jokes have UUIDs
 jokes.forEach((joke) => {
   if (!joke.id) {
     joke.id = uuidv4();
   }
+  // Initialize rating and votes if not present
+  if (joke.rating === undefined) joke.rating = 0;
+  if (joke.votes === undefined) joke.votes = 0;
 });
 
 export const types: string[] = Array.from(
@@ -55,6 +63,16 @@ export const jokeByType = (type: string, n: number): Joke[] => {
   );
 };
 
+export const searchJokes = (query: string): Joke[] => {
+  const searchTermLower = query.toLowerCase();
+  return jokes.filter(
+    (joke) =>
+      joke.setup.toLowerCase().includes(searchTermLower) ||
+      joke.punchline.toLowerCase().includes(searchTermLower) ||
+      joke.type.toLowerCase().includes(searchTermLower),
+  );
+};
+
 export const count: number = jokes.length;
 
 export const jokeById = (id: string): Joke | undefined => {
@@ -88,6 +106,33 @@ export const updateJoke = (id: string, updatedJoke: Joke): Joke | undefined => {
     id: jokes[index].id,
     rating: jokes[index].rating,
     votes: jokes[index].votes,
+  };
+
+  saveJokesToFile();
+
+  return jokes[index];
+};
+
+export const rateJoke = (id: string, rating: number): Joke | undefined => {
+  const index = jokes.findIndex((joke) => joke.id === id);
+
+  if (index === -1) {
+    return undefined;
+  }
+
+  const joke = jokes[index];
+  const currentRating = joke.rating || 0;
+  const currentVotes = joke.votes || 0;
+
+  // Calculate new weighted average rating
+  const totalPoints = currentRating * currentVotes + rating;
+  const newVotes = currentVotes + 1;
+  const newRating = totalPoints / newVotes;
+
+  jokes[index] = {
+    ...joke,
+    rating: newRating,
+    votes: newVotes,
   };
 
   saveJokesToFile();
