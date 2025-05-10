@@ -8,22 +8,18 @@ export interface Joke {
   punchline: string;
 }
 
-// Load jokes from JSON file
 const jokesPath = path.join(__dirname, "../jokes/index.json");
 const jokes: Joke[] = JSON.parse(fs.readFileSync(jokesPath, "utf8"));
 
-// Add IDs to jokes
 let lastJokeId = 0;
 jokes.forEach((joke) => {
   joke.id = ++lastJokeId;
 });
 
-// Get all available joke types
 export const types: string[] = Array.from(
-  new Set(jokes.map((joke) => joke.type))
+  new Set(jokes.map((joke) => joke.type)),
 );
 
-// Get a random joke
 export const randomJoke = (): Joke => {
   return jokes[Math.floor(Math.random() * jokes.length)];
 };
@@ -57,7 +53,7 @@ export const randomSelect = (number: number): Joke[] => randomN(jokes, number);
 export const jokeByType = (type: string, n: number): Joke[] => {
   return randomN(
     jokes.filter((joke) => joke.type === type),
-    n
+    n,
   );
 };
 
