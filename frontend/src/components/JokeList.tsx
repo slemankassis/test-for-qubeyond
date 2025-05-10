@@ -5,6 +5,7 @@ import { JokeCard } from "./JokeCard";
 import { Pagination } from "./Pagination";
 import { SortControls } from "./SortControls";
 import { FilterControls } from "./FilterControls";
+import { SearchBar } from "./SearchBar";
 import JokeModal from "./JokeModal";
 
 interface JokeListProps {
@@ -21,6 +22,8 @@ export const JokeList: React.FC<JokeListProps> = ({ darkMode }) => {
   const [showModal, setShowModal] = useState<boolean>(false);
   const [selectedJoke, setSelectedJoke] = useState<Joke | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [isSearching, setIsSearching] = useState<boolean>(false);
 
   const [pagination, setPagination] = useState<PaginationInfo>({
     currentPage: 1,
@@ -37,7 +40,15 @@ export const JokeList: React.FC<JokeListProps> = ({ darkMode }) => {
   const fetchJokes = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await axios.get("http://localhost:3005/jokes/random/50");
+      let response;
+
+      if (isSearching && searchTerm) {
+        response = await axios.get(
+          `http://localhost:3005/jokes/search?q=${encodeURIComponent(searchTerm)}`,
+        );
+      } else {
+        response = await axios.get("http://localhost:3005/jokes/random/50");
+      }
 
       const jokesWithRating = response.data.map((joke: Joke) => ({
         ...joke,
@@ -59,11 +70,26 @@ export const JokeList: React.FC<JokeListProps> = ({ darkMode }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isSearching, searchTerm]);
 
   useEffect(() => {
     fetchJokes();
   }, [fetchJokes, refreshTrigger]);
+
+  const handleSearch = (term: string) => {
+    setSearchTerm(term);
+    setIsSearching(!!term);
+    setPagination((prev) => ({
+      ...prev,
+      currentPage: 1,
+    }));
+  };
+
+  const clearSearch = () => {
+    setSearchTerm("");
+    setIsSearching(false);
+    setRefreshTrigger((prev) => prev + 1);
+  };
 
   const handleOpenModal = (joke: Joke | null = null) => {
     setSelectedJoke(joke);
@@ -142,27 +168,29 @@ export const JokeList: React.FC<JokeListProps> = ({ darkMode }) => {
     setSelectedType(type);
   };
 
-  const handleRateJoke = (id: number | undefined, rating: number) => {
+  const handleRateJoke = (id: string | undefined, rating: number) => {
     if (id === undefined) return;
 
-    setJokes((prevJokes) =>
-      prevJokes.map((joke) =>
-        joke.id === id
-          ? {
-              ...joke,
-              rating:
-                ((joke.rating || 0) * (joke.votes || 0) + rating) /
-                ((joke.votes || 0) + 1),
-              votes: (joke.votes || 0) + 1,
-            }
-          : joke,
-      ),
-    );
+    // Call the API to rate the joke
+    axios
+      .post(`http://localhost:3005/jokes/${id}/rate`, { value: rating })
+      .then((response) => {
+        // Update local state with the updated joke
+        const updatedJoke = response.data;
+        setJokes((prevJokes) =>
+          prevJokes.map((joke) => (joke.id === id ? updatedJoke : joke)),
+        );
+      })
+      .catch((err) => {
+        console.error("Error rating joke:", err);
+      });
   };
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+      <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:justify-between md:items-center gap-4">
+        <SearchBar onSearch={handleSearch} darkMode={darkMode} />
+
         <div className="flex items-center gap-4">
           <FilterControls
             jokeTypes={jokeTypes}
@@ -181,6 +209,19 @@ export const JokeList: React.FC<JokeListProps> = ({ darkMode }) => {
           >
             Add Joke
           </button>
+
+          {isSearching && (
+            <button
+              onClick={clearSearch}
+              className={`px-4 py-2 rounded-md ${
+                darkMode
+                  ? "bg-gray-600 text-white hover:bg-gray-700"
+                  : "bg-gray-300 text-gray-800 hover:bg-gray-400"
+              }`}
+            >
+              Clear Search
+            </button>
+          )}
         </div>
 
         <SortControls
@@ -210,7 +251,9 @@ export const JokeList: React.FC<JokeListProps> = ({ darkMode }) => {
         <div
           className={`text-center p-8 rounded-lg ${darkMode ? "bg-gray-800" : "bg-gray-200"}`}
         >
-          No jokes found. Try changing your filters.
+          {isSearching
+            ? `No jokes found for "${searchTerm}". Try a different search term.`
+            : "No jokes found. Try changing your filters."}
         </div>
       )}
 

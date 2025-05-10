@@ -3,7 +3,7 @@ import { Joke } from "../types";
 
 interface JokeCardProps {
   joke: Joke;
-  onRate: (id: number | undefined, rating: number) => void;
+  onRate: (id: string | undefined, rating: number) => void;
   onEdit?: () => void;
   darkMode: boolean;
 }

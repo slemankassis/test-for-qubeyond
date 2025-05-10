@@ -1,6 +1,5 @@
 export interface Joke {
-  id?: number;
-  joke_id?: string;
+  id?: string;
   type: string;
   setup: string;
   punchline: string;
