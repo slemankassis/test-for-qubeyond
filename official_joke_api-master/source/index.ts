@@ -1,6 +1,9 @@
 import express, { Request, Response, NextFunction } from "express";
 import LimitingMiddleware from "limiting-middleware";
 import jokeRoutes from "./routes/jokeRoutes";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 interface ApiError extends Error {
   statusCode?: number;

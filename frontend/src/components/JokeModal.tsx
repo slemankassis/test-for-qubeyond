@@ -48,9 +48,9 @@ export const JokeModal: React.FC<JokeModalProps> = ({
 
     try {
       if (isEditMode && joke && joke.id) {
-        await axios.put(`http://localhost:3006/jokes/${joke.id}`, payload);
+        await axios.put(`${import.meta.env.VITE_API_URL}/jokes/${joke.id}`, payload);
       } else {
-        await axios.post("http://localhost:3006/jokes", payload);
+        await axios.post(`${import.meta.env.VITE_API_URL}/jokes`, payload);
       }
 
       onRefresh();

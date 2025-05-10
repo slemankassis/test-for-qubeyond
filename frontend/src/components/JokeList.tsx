@@ -44,10 +44,12 @@ export const JokeList: React.FC<JokeListProps> = ({ darkMode }) => {
 
       if (isSearching && searchTerm) {
         response = await axios.get(
-          `http://localhost:3006/jokes/search?q=${encodeURIComponent(searchTerm)}`,
+          `${import.meta.env.VITE_API_URL}/jokes/search?q=${encodeURIComponent(searchTerm)}`,
         );
       } else {
-        response = await axios.get("http://localhost:3006/jokes/random/50");
+        response = await axios.get(
+          `${import.meta.env.VITE_API_URL}/jokes/random/50`,
+        );
       }
 
       const jokesWithRating = response.data.map((joke: Joke) => ({
@@ -173,7 +175,9 @@ export const JokeList: React.FC<JokeListProps> = ({ darkMode }) => {
 
     // Call the API to rate the joke
     axios
-      .post(`http://localhost:3006/jokes/${id}/rate`, { value: rating })
+      .post(`${import.meta.env.VITE_API_URL}/jokes/${id}/rate`, {
+        value: rating,
+      })
       .then((response) => {
         // Update local state with the updated joke
         const updatedJoke = response.data;

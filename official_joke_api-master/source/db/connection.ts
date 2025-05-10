@@ -1,23 +1,22 @@
 import { Pool } from "pg";
+import dotenv from "dotenv";
 
-// Database configuration
+dotenv.config();
+
 const config = {
-  user: "jokesuser",
-  password: "jokespassword",
-  host: "localhost",
-  port: 5432,
-  database: "jokes_api_db",
+  user: process.env.DB_USER || "jokesuser",
+  password: process.env.DB_PASSWORD || "jokespassword",
+  host: process.env.DB_HOST || "localhost",
+  port: parseInt(process.env.DB_PORT || "5432", 10),
+  database: process.env.DB_NAME || "jokes_api_db",
 };
 
-// Create a new Pool instance
 const pool = new Pool(config);
 
-// Log connections
 pool.on("connect", () => {
   console.log("Connected to PostgreSQL database");
 });
 
-// Log errors
 pool.on("error", (err: Error) => {
   console.error("Unexpected error on idle client", err);
   process.exit(-1);
