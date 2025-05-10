@@ -1,17 +1,39 @@
-// Simple in-memory cache implementation
-interface CacheItem {
-  data: any;
+/**
+ * Type definitions for cache items
+ */
+interface CacheItem<T> {
+  data: T;
   expiresAt: number;
 }
 
-class MemoryCache {
-  private cache: Record<string, CacheItem>;
-  private defaultTTL: number;
+/**
+ * Type definitions for cache statistics
+ */
+interface CacheStats {
+  size: number;
+  keys: string[];
+  hitRate?: number;
+  missRate?: number;
+}
 
+/**
+ * Enhanced in-memory cache implementation with TypeScript support
+ */
+class MemoryCache {
+  private cache: Record<string, CacheItem<any>>;
+  private defaultTTL: number;
+  private hits: number;
+  private misses: number;
+
+  /**
+   * Create a new MemoryCache instance
+   * @param defaultTTL Default time to live in milliseconds (default: 5 minutes)
+   */
   constructor(defaultTTL = 300000) {
-    // Default 5 minutes (in milliseconds)
     this.cache = {};
     this.defaultTTL = defaultTTL;
+    this.hits = 0;
+    this.misses = 0;
   }
 
   /**
@@ -20,7 +42,7 @@ class MemoryCache {
    * @param data Data to store
    * @param ttl Time to live in milliseconds (optional, default from constructor is used if not provided)
    */
-  set(key: string, data: any, ttl?: number): void {
+  set<T>(key: string, data: T, ttl?: number): void {
     const expiresAt = Date.now() + (ttl || this.defaultTTL);
     this.cache[key] = { data, expiresAt };
   }
@@ -28,19 +50,40 @@ class MemoryCache {
   /**
    * Get a value from the cache
    * @param key Cache key
-   * @returns The cached data or null if expired or not found
+   * @returns The cached data or undefined if expired or not found
    */
-  get(key: string): any {
+  get<T>(key: string): T | undefined {
     const item = this.cache[key];
 
-    // Return null if item doesn't exist or is expired
+    // Return undefined if item doesn't exist or is expired
     if (!item || Date.now() > item.expiresAt) {
       // Clean up expired item
       if (item) delete this.cache[key];
-      return null;
+      this.misses++;
+      return undefined;
     }
 
-    return item.data;
+    this.hits++;
+    return item.data as T;
+  }
+
+  /**
+   * Check if a key exists in the cache and is not expired
+   * @param key Cache key
+   * @returns True if the key exists and is not expired
+   */
+  has(key: string): boolean {
+    const item = this.cache[key];
+    const exists = !!item && Date.now() <= item.expiresAt;
+    
+    // Track metrics but don't delete expired items
+    if (exists) {
+      this.hits++;
+    } else {
+      this.misses++;
+    }
+    
+    return exists;
   }
 
   /**
@@ -56,24 +99,40 @@ class MemoryCache {
    */
   clear(): void {
     this.cache = {};
+    this.resetMetrics();
+  }
+
+  /**
+   * Reset hit/miss metrics
+   */
+  resetMetrics(): void {
+    this.hits = 0;
+    this.misses = 0;
   }
 
   /**
    * Get cache statistics
    */
-  stats(): { size: number; keys: string[] } {
+  stats(): CacheStats {
     // Clean expired items before reporting stats
     this.cleanup();
+    
+    const totalAccesses = this.hits + this.misses;
+    const hitRate = totalAccesses > 0 ? this.hits / totalAccesses : 0;
+    const missRate = totalAccesses > 0 ? this.misses / totalAccesses : 0;
+    
     return {
       size: Object.keys(this.cache).length,
       keys: Object.keys(this.cache),
+      hitRate: parseFloat(hitRate.toFixed(2)),
+      missRate: parseFloat(missRate.toFixed(2))
     };
   }
 
   /**
    * Remove all expired items from the cache
    */
-  private cleanup(): void {
+  cleanup(): void {
     const now = Date.now();
     for (const key in this.cache) {
       if (this.cache[key].expiresAt < now) {
@@ -81,7 +140,35 @@ class MemoryCache {
       }
     }
   }
+
+  /**
+   * Set multiple values in the cache at once
+   * @param entries Object containing key-value pairs to cache
+   * @param ttl Time to live in milliseconds (optional)
+   */
+  setMany<T>(entries: Record<string, T>, ttl?: number): void {
+    for (const [key, value] of Object.entries(entries)) {
+      this.set(key, value, ttl);
+    }
+  }
+
+  /**
+   * Update the TTL for a cached item
+   * @param key Cache key
+   * @param ttl New TTL in milliseconds
+   * @returns boolean indicating if the item was found and updated
+   */
+  touch(key: string, ttl: number): boolean {
+    const item = this.cache[key];
+    if (!item || Date.now() > item.expiresAt) {
+      return false;
+    }
+    
+    item.expiresAt = Date.now() + ttl;
+    return true;
+  }
 }
 
 // Export a singleton instance
-export const cache = new MemoryCache();
+const cache = new MemoryCache();
+export { cache, MemoryCache };
